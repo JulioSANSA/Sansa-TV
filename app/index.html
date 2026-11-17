@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Inicio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #05060a; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Samsung One", "Helvetica Neue", Arial, sans-serif;
+    color: #f5f5f7;
+  }
+
+  /* Fondo: degradado suave que toma el color de la app enfocada */
+  #bg {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 25% 20%, var(--glow, #1d3b8a) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 90%, #2a1450 0%, transparent 60%),
+      linear-gradient(180deg, #0b0d16 0%, #05060a 100%);
+    transition: background 0.6s ease;
+  }
+  #bg::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%);
+  }
+
+  .top {
+    position: absolute; top: 4.4vw; left: 5.2vw; right: 5.2vw;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .clock { font-size: 7.6vw; font-weight: 200; letter-spacing: -0.15vw; line-height: 1; }
+  .date { font-size: 1.55vw; font-weight: 400; opacity: 0.72; margin-top: 0.9vw; text-transform: capitalize; }
+  .weather { text-align: right; }
+  .weather .temp { font-size: 3.4vw; font-weight: 200; line-height: 1; }
+  .weather .desc { font-size: 1.3vw; opacity: 0.72; margin-top: 0.6vw; }
+  .weather .place { font-size: 1.05vw; opacity: 0.45; margin-top: 0.3vw; letter-spacing: 0.05vw; text-transform: uppercase; }
+
+  .hero {
+    position: absolute; left: 5.2vw; bottom: 22.5vw;
+    font-size: 2.6vw; font-weight: 600; letter-spacing: -0.03vw;
+    transition: opacity .25s ease;
+  }
+  .hero small { display: block; font-size: 1.2vw; font-weight: 400; opacity: 0.6; margin-top: 0.4vw; }
+
+  .row {
+    position: absolute; left: 0; right: 0; bottom: 6.5vw;
+    display: flex; justify-content: center; gap: 1.55vw;
+  }
+  .tile {
+    position: relative;
+    width: 11.6vw; height: 7vw;
+    border-radius: 1.05vw;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 0.6vw 1.6vw rgba(0,0,0,0.45);
+    transform: scale(1);
+    transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, filter .22s ease;
+    filter: brightness(0.82);
+    cursor: pointer;
+  }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .label {
+    font-weight: 700; font-size: 1.45vw; letter-spacing: -0.02vw; text-align: center; line-height: 1.05;
+    padding: 0 0.6vw;
+  }
+  /* brillo tipo Apple TV */
+  .tile::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 45%);
+    opacity: 0; transition: opacity .22s ease;
+  }
+  .tile.focus {
+    transform: scale(1.16) translateY(-0.5vw);
+    box-shadow: 0 1.8vw 3.2vw rgba(0,0,0,0.65);
+    filter: brightness(1);
+    z-index: 2;
+  }
+  .tile.focus::after { opacity: 1; }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 1.8vw; transform: translateX(-50%);
+    font-size: 1.1vw; opacity: 0; transition: opacity .3s ease;
+    background: rgba(255,255,255,0.12); padding: 0.55vw 1.3vw; border-radius: 2vw;
+    backdrop-filter: blur(10px);
+  }
+  .toast.show { opacity: 0.9; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<div class="top">
+  <div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+  </div>
+  <div class="weather">
+    <div class="temp" id="temp">--°</div>
+    <div class="desc" id="desc">&nbsp;</div>
+    <div class="place">Ávila</div>
+  </div>
+</div>
+
+<div class="hero" id="hero"></div>
+<div class="row" id="row"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Apps, en el orden de Julio ----------
+  // ids: identificadores conocidos de la tienda de Samsung (se prueban en orden).
+  // match: para encontrar la app instalada por nombre si la tele deja consultar la lista.
+  var CDN = "https://d1oxlq5h9kq8q5.cloudfront.net/tvstore/contents/";
+  var APPS = [
+    { name: "Movistar Plus+", match: /movistar/i, ids: [], bg: "linear-gradient(135deg,#0b1a2e,#019df4)", glow: "#0a5fa0", text: "#ffffff" },
+    { name: "HBO Max", match: /hbo|^max$/i, ids: ["3202301029760", "3201601007230"], icon: CDN + "3202301029760/icon_198x198_20230504045632984.png", bg: "linear-gradient(135deg,#0a0a2e,#2b39d8)", glow: "#2a2aa8", text: "#ffffff" },
+    { name: "Crunchyroll", match: /crunchyroll/i, ids: ["3202302030097"], icon: CDN + "3202302030097/icon_198x198_20240729082452564.png", bg: "#f47521", glow: "#a8501a", text: "#ffffff" },
+    { name: "Netflix", match: /netflix/i, ids: ["3201907018807", "11101200001"], icon: CDN + "3201907018807/icon_198x198_20220913014109378.png", bg: "#000000", glow: "#7a0a10", text: "#e50914" },
+    { name: "Disney+", match: /disney/i, ids: ["3201901017640", "3202009021709", "3202204027038"], icon: CDN + "3201901017640/icon_198x198_20240417014647928.png", bg: "linear-gradient(135deg,#0b1d45,#113ccf)", glow: "#123a9e", text: "#ffffff" },
+    { name: "Prime Video", match: /prime/i, ids: ["3201910019365", "3201512006785"], icon: CDN + "3201910019365/icon_198x198_20230604091402467.png", bg: "#0f171e", glow: "#0d5d80", text: "#00a8e1" },
+    { name: "YouTube", match: /^youtube$/i, ids: ["111299001912"], icon: CDN + "111299001912/icon_198x198_20170921013733000.png", bg: "#ffffff", glow: "#8a1010", text: "#ff0000" }
+  ];
+
+  var hasTizen = typeof window.tizen !== "undefined" && tizen.application;
+  var row = document.getElementById("row");
+  var hero = document.getElementById("hero");
+  var bg = document.getElementById("bg");
+  var toastEl = document.getElementById("toast");
+  var tiles = [];
+  var current = 0;
+
+  // ---------- Construir las tarjetas ----------
+  APPS.forEach(function (app, i) {
+    var t = document.createElement("div");
+    t.className = "tile";
+    t.style.background = app.bg;
+
+    function showLabel() {
+      t.innerHTML = "";
+      var l = document.createElement("div");
+      l.className = "label";
+      l.style.color = app.text;
+      l.textContent = app.name;
+      t.appendChild(l);
+    }
+    if (app.icon) {
+      var img = new Image();
+      img.alt = app.name;
+      img.onerror = showLabel;
+      img.src = app.icon;
+      t.appendChild(img);
+    } else {
+      showLabel();
+    }
+
+    t.addEventListener("click", function () { focus(i); launch(app); });
+    t.addEventListener("mouseenter", function () { focus(i); });
+    row.appendChild(t);
+    tiles.push(t);
+  });
+
+  // ---------- Buscar las apps instaladas en la tele (si se puede) ----------
+  if (hasTizen) {
+    try {
+      tizen.application.getAppsInfo(function (list) {
+        APPS.forEach(function (app) {
+          for (var k = 0; k < list.length; k++) {
+            if (app.match.test(list[k].name)) {
+              app.ids.unshift(list[k].id);
+              if (list[k].iconPath && !app.icon) {
+                var t = tiles[APPS.indexOf(app)];
+                var img = new Image();
+                img.onload = function () { t.innerHTML = ""; t.appendChild(img); };
+                img.src = list[k].iconPath;
+              }
+              break;
+            }
+          }
+        });
+      });
+    } catch (e) {}
+  }
+
+  // ---------- Foco y navegación ----------
+  function focus(i) {
+    if (i < 0) i = 0;
+    if (i > tiles.length - 1) i = tiles.length - 1;
+    tiles[current].classList.remove("focus");
+    current = i;
+    tiles[current].classList.add("focus");
+    hero.innerHTML = APPS[current].name + "<small>Pulsa OK para abrir</small>";
+    bg.style.setProperty("--glow", APPS[current].glow);
+  }
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { toastEl.classList.remove("show"); }, 2500);
+  }
+
+  // ---------- Abrir una app ----------
+  function launch(app) {
+    toast("Abriendo " + app.name + "…");
+    var ids = app.ids.slice();
+    if (!ids.length) { toast(app.name + ": no la encuentro en la tele"); return; }
+
+    if (hasTizen) {
+      (function tryNext() {
+        var id = ids.shift();
+        if (!id) { restLaunch(app); return; }
+        try {
+          tizen.application.launch(id, function () {}, function () { tryNext(); });
+        } catch (e) { tryNext(); }
+      })();
+    } else {
+      restLaunch(app);
+    }
+  }
+
+  // Plan B: la API local de la tele (la misma que usamos desde el Mac)
+  function restLaunch(app) {
+    var hosts = ["127.0.0.1", "192.168.1.36"];
+    app.ids.forEach(function (id) {
+      hosts.forEach(function (h) {
+        try {
+          fetch("http://" + h + ":8001/api/v2/applications/" + id, { method: "POST", mode: "no-cors" })
+            .catch(function () {});
+        } catch (e) {}
+      });
+    });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    switch (e.keyCode) {
+      case 37: focus(current - 1); e.preventDefault(); break; // izquierda
+      case 39: focus(current + 1); e.preventDefault(); break; // derecha
+      case 13: launch(APPS[current]); e.preventDefault(); break; // OK
+      case 10009: // Atrás
+        if (hasTizen) { try { tizen.application.getCurrentApplication().exit(); } catch (err) {} }
+        break;
+    }
+  });
+
+  // ---------- Reloj ----------
+  var DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  var MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function tick() {
+    var d = new Date();
+    document.getElementById("clock").textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    document.getElementById("date").textContent = DIAS[d.getDay()] + ", " + d.getDate() + " de " + MESES[d.getMonth()];
+  }
+  tick();
+  setInterval(tick, 10000);
+
+  // ---------- Tiempo en Ávila (Open-Meteo, sin clave) ----------
+  var WMO = {
+    0: "Despejado", 1: "Casi despejado", 2: "Parcialmente nublado", 3: "Nublado",
+    45: "Niebla", 48: "Niebla", 51: "Llovizna", 53: "Llovizna", 55: "Llovizna",
+    61: "Lluvia débil", 63: "Lluvia", 65: "Lluvia fuerte", 66: "Lluvia helada", 67: "Lluvia helada",
+    71: "Nieve débil", 73: "Nieve", 75: "Nieve fuerte", 77: "Granizo fino",
+    80: "Chubascos", 81: "Chubascos", 82: "Chubascos fuertes", 85: "Chubascos de nieve", 86: "Chubascos de nieve",
+    95: "Tormenta", 96: "Tormenta con granizo", 99: "Tormenta con granizo"
+  };
+  function weather() {
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=40.656&longitude=-4.681&current=temperature_2m,weather_code&timezone=Europe%2FMadrid";
+    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      var c = j.current;
+      document.getElementById("temp").textContent = Math.round(c.temperature_2m) + "°";
+      document.getElementById("desc").textContent = WMO[c.weather_code] || "";
+    }).catch(function () {});
+  }
+  weather();
+  setInterval(weather, 15 * 60 * 1000);
+
+  focus(0);
+})();
+</script>
+</body>
+</html>

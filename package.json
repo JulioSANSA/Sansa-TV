@@ -1,0 +1,10 @@
+{
+  "name": "sansa-tv",
+  "version": "1.0.0",
+  "description": "Pantalla de inicio estilo Apple TV para la tele de Julio",
+  "packageType": "app",
+  "appName": "Inicio Julio",
+  "appPath": "app/index.html",
+  "keys": [],
+  "license": "MIT"
+}
