@@ -1,6 +1,6 @@
 {
   "name": "sansa-tv",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Pantalla de inicio estilo Apple TV para la tele de Julio",
   "packageType": "app",
   "appName": "Inicio Julio",

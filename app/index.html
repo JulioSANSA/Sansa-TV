@@ -106,7 +106,7 @@
 <div class="hero" id="hero"></div>
 <div class="row" id="row"></div>
 <div class="toast" id="toast"></div>
-<div id="dbg" style="position:absolute;left:1vw;bottom:0.6vw;font-size:0.9vw;opacity:.6;font-family:monospace"></div>
+<div id="dbg" style="position:absolute;left:1vw;bottom:0.6vw;font-size:1.1vw;opacity:.85;font-family:monospace"></div>
 
 <script>
 (function () {
@@ -129,7 +129,7 @@
   var hasTizen = typeof window.tizen !== "undefined" && tizen.application;
   var dbgEl = null;
   function dbg(m) { try { dbgEl = dbgEl || document.getElementById("dbg"); dbgEl.textContent = m; } catch (e) {} }
-  setTimeout(function () { dbg("tizen: " + (hasTizen ? "sí" : "no") + " · origen: " + location.origin); }, 0);
+  setTimeout(function () { dbg("v1.0.2 · tizen: " + (hasTizen ? "sí" : "no") + " · origen: " + location.origin + " · historial: " + history.length); }, 0);
   var row = document.getElementById("row");
   var hero = document.getElementById("hero");
   var bg = document.getElementById("bg");
@@ -245,8 +245,12 @@
       case 37: focus(current - 1); e.preventDefault(); break; // izquierda
       case 39: focus(current + 1); e.preventDefault(); break; // derecha
       case 13: launch(APPS[current]); e.preventDefault(); break; // OK
-      case 10009: // Atrás
-        if (hasTizen) { try { tizen.application.getCurrentApplication().exit(); } catch (err) {} }
+      case 10009: // Atrás: volver a TizenBrew
+      case 404:   // botón verde
+        e.preventDefault();
+        dbg("volviendo a TizenBrew…");
+        if (history.length > 1) { history.back(); }
+        else if (hasTizen) { try { tizen.application.getCurrentApplication().exit(); } catch (err) {} }
         break;
     }
   });
@@ -283,6 +287,7 @@
   weather();
   setInterval(weather, 15 * 60 * 1000);
 
+  try { tizen.tvinputdevice.registerKey("ColorF1Green"); } catch (e) {}
   focus(0);
 })();
 </script>
