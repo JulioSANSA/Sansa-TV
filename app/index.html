@@ -106,6 +106,7 @@
 <div class="hero" id="hero"></div>
 <div class="row" id="row"></div>
 <div class="toast" id="toast"></div>
+<div id="dbg" style="position:absolute;left:1vw;bottom:0.6vw;font-size:0.9vw;opacity:.6;font-family:monospace"></div>
 
 <script>
 (function () {
@@ -126,6 +127,9 @@
   ];
 
   var hasTizen = typeof window.tizen !== "undefined" && tizen.application;
+  var dbgEl = null;
+  function dbg(m) { try { dbgEl = dbgEl || document.getElementById("dbg"); dbgEl.textContent = m; } catch (e) {} }
+  setTimeout(function () { dbg("tizen: " + (hasTizen ? "sí" : "no") + " · origen: " + location.origin); }, 0);
   var row = document.getElementById("row");
   var hero = document.getElementById("hero");
   var bg = document.getElementById("bg");
@@ -214,8 +218,8 @@
         var id = ids.shift();
         if (!id) { restLaunch(app); return; }
         try {
-          tizen.application.launch(id, function () {}, function () { tryNext(); });
-        } catch (e) { tryNext(); }
+          tizen.application.launch(id, function () { dbg("abierta " + id); }, function (err) { dbg("fallo " + id + ": " + (err && err.message)); tryNext(); });
+        } catch (e) { dbg("excepción " + id + ": " + e.message); tryNext(); }
       })();
     } else {
       restLaunch(app);
@@ -229,7 +233,8 @@
       hosts.forEach(function (h) {
         try {
           fetch("http://" + h + ":8001/api/v2/applications/" + id, { method: "POST", mode: "no-cors" })
-            .catch(function () {});
+            .then(function () { dbg("REST enviado " + h + " " + id); })
+            .catch(function (e) { dbg("REST error " + h + ": " + e.message); });
         } catch (e) {}
       });
     });
